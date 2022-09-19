@@ -7,7 +7,7 @@ import sys
 import numpy as np
 
 
-sys.path.append("E:\\ProgramData\\python\\cuebiq_share_git")
+#sys.path.append("E:\\ProgramData\\python\\cuebiq_share_git")
 from distance import distance
 
 
