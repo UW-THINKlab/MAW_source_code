@@ -93,7 +93,7 @@ if __name__ == '__main__':
     #day_list = set() # time period covered by the data
     usernamelist = set() # user names
     with open(inputFile,'r+') as csvfile:
-        readCSV = csv.reader(csvfile, delimiter='\t')
+        readCSV = csv.reader(csvfile, delimiter=',')
         for row in readCSV:
             #day_list.add(row[-1][:6])  # the last colume is humantime, in format 200506082035
             usernamelist.add(row[1])  # get ID list; the second colume is userID
@@ -120,7 +120,7 @@ if __name__ == '__main__':
         UserList = {name: defaultdict(list) for name in namechunk}
 
         with open(inputFile,'r+') as readfile:
-            readCSV = csv.reader(readfile, delimiter='\t')
+            readCSV = csv.reader(readfile, delimiter=',')
             for row in readCSV:
                 if '.' not in row[3] or '.' not in row[4]: continue # debug a data issue: not '.' in lat or long
                 name = row[1]
