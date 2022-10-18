@@ -123,7 +123,98 @@ def cluster_traceSegmentation(user, spat_constr, dur_constr):
                     traj[k][6], traj[k][7], traj[k][9] = mean_lat, mean_long, dur
                 i = j+1
         user[day] = traj
-    return user
+    
+    ## Recombine stays that (1) don't have transit points between them and (2) are within the distance threshold.
+    stays_combined = []
+    all_stays = []
+    
+    day_set = list(user.keys())
+    day_set.sort()
+    
+    for a_day in day_set:
+        for a_location in user[a_day]:
+            if len(all_stays) == 0:
+                all_stays.append([a_location])
+            else:
+                last_stay = (all_stays[-1][-1][6], all_stays[-1][-1][7])
+                if a_location[6] == last_stay[0] and a_location[7] == last_stay[1]:
+                    all_stays[-1].append(a_location)
+                else:
+                    all_stays.append([a_location])
+                    
+    stay_index = 0
+    stays_combined.append(all_stays[0])
+    all_stays.pop(0)
+    
+    update_lat = float(stays_combined[-1][-1][6])
+    update_long = float(stays_combined[-1][-1][7])
+    
+    while len(all_stays) > 0:
+        current_stay = all_stays.pop(0)
+        if tuple(stays_combined[-1][-1][6:8]) == ('-1','-1'):
+            stays_combined.append(current_stay)
+            update_lat = float(stays_combined[-1][-1][6])
+            update_long = float(stays_combined[-1][-1][7])
+        else:
+            if tuple(current_stay[-1][6:8]) != ('-1','-1'):
+                if distance(float(current_stay[-1][6]), float(current_stay[-1][7]), update_lat, update_long) < 0.2:
+                    stays_combined[-1].extend(current_stay)
+                    lat_set = set([float(x[6]) for x in stays_combined[-1]])
+                    long_set = set([float(x[7]) for x in stays_combined[-1]])
+                    update_lat = np.mean(list(lat_set))
+                    update_long = np.mean(list(long_set))
+                else:
+                    stays_combined.append(current_stay)
+                    update_lat = float(stays_combined[-1][-1][6])
+                    update_long = float(stays_combined[-1][-1][7])
+            else:
+                if len(all_stays) == 0:
+                    stays_combined.append(current_stay)
+                else:
+                    next_stay = all_stays.pop(0)
+                    if distance(float(next_stay[-1][6]), float(next_stay[-1][7]), update_lat,update_long) < 0.2:
+                        stays_combined[-1].extend(current_stay)
+                        stays_combined[-1].extend(next_stay)
+                        lat_set = set([float(x[6]) for x in stays_combined[-1]])
+                        long_set = set([float(x[7]) for x in stays_combined[-1]])
+                        lat_set = [x for x in lat_set if x != -1.0]
+                        long_set = [x for x in long_set if x != -1.0]
+                        update_lat = np.mean(lat_set)
+                        update_long = np.mean(long_set)
+                    else:
+                        stays_combined.append(current_stay)
+                        stays_combined.append(next_stay)
+                        update_lat = float(stays_combined[-1][-1][6])
+                        update_long = float(stays_combined[-1][-1][7])
+    
+    stays_output = []
+    for a_stay in stays_combined:
+        lat_set = set([float(x[6]) for x in a_stay])
+        long_set = set([float(x[7]) for x in a_stay])
+        lat_set = [x for x in lat_set if x != -1.0]
+        long_set = [x for x in long_set if x != -1.0]
+        if len(lat_set) > 0 and len(long_set) > 0:
+            new_lat = np.mean(lat_set)
+            new_long = np.mean(long_set)
+        else:
+            new_lat = -1
+            new_long = -1
+        for i in range(0, len(a_stay)):
+            a_stay[i][6] = str(new_lat)
+            a_stay[i][7] = str(new_long)
+        stays_output.append(a_stay)
+        
+    ##Convert stays into a disctionary
+    dict_output = {}
+    for a_stay in stays_output:
+        for a_record in a_stay:
+            start_date = a_record[-1][0:6]
+            if start_date in dict_output:
+                dict_output[start_date].append(a_record)
+            else:
+                dict_output[start_date] = [a_record]
+        
+    return (dict_output)
 
 def func(args):
     name, user, spatial_constraint_gps, dur_constraint, outputFile = args
